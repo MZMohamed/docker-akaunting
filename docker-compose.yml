@@ -3,31 +3,55 @@ version: '3.7'
 services:
 
   akaunting:
-    container_name: akaunting
+    container_name: ${NAME}-akaunting
     image: docker.io/akaunting/akaunting:latest
     build:
       context: .
-    ports:
-      - 8080:80
+    expose:
+      - 80
     volumes:
       - akaunting-data:/var/www/html
     restart: unless-stopped
-    env_file:
-      - env/run.env
     environment:
+      # Please never use AKAUNTING_SETUP=true environment variable again after the first time use.
       - AKAUNTING_SETUP
+      - APP_URL: ${HOST}
+      - LOCALE: en-ZA
+      # Don't change this unless you rename your database container
+      - DB_HOST: ${NAME}-akaunting-db
+      - DB_PORT: 3306
+      # Change these to match env/db.env
+      - DB_NAME: ${NAME}
+      - DB_USERNAME: akaunting
+      - DB_PASSWORD: ${DB_PASS}
+      # You should change this to a random string of three numbers or letters followed by an underscore
+      - DB_PREFIX: ${NAME}_
+      # These define the first company to exist on this instance. They are only used during setup.
+      - COMPANY_NAME: ${NAME}
+      - COMPANY_EMAIL: ${COMPANY_EMAIL}
+      # This will be the first administrative user created on setup.
+      - ADMIN_EMAIL: ${LOGIN_EMAIL}
+      - ADMIN_PASSWORD: ${LOGIN_PASSWORD}
     depends_on:
       - akaunting-db
 
   akaunting-db:
-    container_name: akaunting-db
+    container_name: ${NAME}-akaunting-db
     image: mariadb
     volumes:
       - akaunting-db:/var/lib/mysql
     restart: unless-stopped
-    env_file:
-      - env/db.env
+    environment:
+      - MYSQL_DATABASE: ${NAME}
+      - MYSQL_USER: akaunting
+      - MYSQL_PASSWORD: ${DB_PASS}
+      - MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
 
 volumes:
   akaunting-data:
   akaunting-db:
+
+networks:
+  default:
+    name: nginx-proxy
+    external: true
